@@ -7,84 +7,76 @@ file_path <-"C:/Users/HUONG GIANG/Desktop/UNI/DONE/Econometrics/FINAL/final_data
 #file_path <-"C:/Users/phamm/Downloads/project4.dta"
 
 # Read the Stata dataset
-df <- read_dta(file_path)
+data <- read_dta(file_path)
 
-df
-dim(df)
-names(df)
-str(df)
+data
+dim(data)
+names(data)
+str(data)
 
 #Convert to factor
-df$region = as.factor(df$region)
-levels(df$region)
-df$gender = as.factor(df$gender)
-levels(df$gender)
-df$married = as.factor(df$married)
-levels(df$married)
-df$SOE = as.factor(df$SOE)
-levels(df$SOE)
-df$training = as.factor(df$training)
-levels(df$training)
-df$urban = as.factor(df$urban)
-levels(df$urban)
+data$region = as.factor(data$region)
+levels(data$region)
+data$gender = as.factor(data$gender)
+levels(data$gender)
+data$married = as.factor(data$married)
+levels(data$married)
+data$SOE = as.factor(data$SOE)
+levels(data$SOE)
+data$training = as.factor(data$training)
+levels(data$training)
+data$urban = as.factor(data$urban)
+levels(data$urban)
 
 #### DATA PREPROCESSING
 # Check missing values
-colSums(is.na(df))
-df <- na.omit(df) #no missing value
-dim(df)
+colSums(is.na(data))
+data <- na.omit(data) #no missing value
+dim(data)
 
 # Duplicated values
-sum(duplicated(df))
-df <- unique(df)
-dim(df)
+sum(duplicated(data))
+data <- unique(data)
+dim(data)
 
 # Outliers Handling
-par(mfrow = c(1,4))
-boxplot(df$log_wage,main = "Log_wage")
-boxplot(df$exper,main = "Work experience")
-boxplot(df$wage,main = "Wage (hourly wage in thousand VND)")
-boxplot(df$edu,main="Education") # outliers exist
+par(mfrow = c(1,3))
+boxplot(data$exper,main = "Work experience")
+boxplot(data$wage,main = "Wage (hourly wage in thousand VND)")
+boxplot(data$edu,main="Education") # outliers exist
 
 #Remove outliers
 ##for Exper 
-quartiles <- quantile(df$exper, probs=c(.25, .75), na.rm = FALSE)
-IQR <- IQR(df$exper)
+quartiles <- quantile(data$exper, probs=c(.25, .75), na.rm = FALSE)
+IQR <- IQR(data$exper)
 
 Lower <- quartiles[1] - 1.5*IQR
 Upper <- quartiles[2] + 1.5*IQR 
 
-df <- subset(df, df$exper > Lower & df$exper < Upper)
-dim(df)
+data <- subset(data, data$exper > Lower & data$exper < Upper)
+dim(data)
 
 
-##for Wage - Repeat this step 4 times to remove all outliers.
-quartiles <- quantile(df$wage, probs=c(.25, .75), na.rm = FALSE)
-IQR <- IQR(df$wage)
+##for Wage 
+quartiles <- quantile(data$wage, probs=c(.25, .75), na.rm = FALSE)
+IQR <- IQR(data$wage)
 
 Lower <- quartiles[1] - 1.5*IQR
 Upper <- quartiles[2] + 1.5*IQR 
 
-df <- subset(df, df$wage > Lower & df$wage < Upper)
-dim(df)
+data <- subset(data, data$wage > Lower & data$wage < Upper)
+dim(data)
 
 
 ##for Edu
-quartiles <- quantile(df$edu, probs=c(.25, .75), na.rm = FALSE)
-IQR <- IQR(df$edu)
+quartiles <- quantile(data$edu, probs=c(.25, .75), na.rm = FALSE)
+IQR <- IQR(data$edu)
 
 Lower <- quartiles[1] - 1.5*IQR
 Upper <- quartiles[2] + 1.5*IQR 
 
-df <- subset(df, df$edu > Lower & df$edu < Upper)
-dim(df)
-
-#### TRAIN-TEST SPLIT
-set.seed(1)
-
-sample <- sample(c(TRUE, FALSE), nrow(df), replace=TRUE, prob=c(0.7,0.3))
-data  <- df[sample, ]
-test   <- df[!sample, ]
+data <- subset(data, data$edu > Lower & data$edu < Upper)
+dim(data)
 
 #### VARIABLE SELECTION
 library(stats)
@@ -94,34 +86,19 @@ summary(big_model)
 model_aic_back = step(big_model, direction  = "backward")
 summary(model_aic_back)
 
-n = length(resid(big_model))
-model_back_aic = step(big_model, direction="backward", k = log(n)) #  BIC
-summary(model_aic_back)
-
 #Check collinearity 
 library(car)
-vif(big_model) #remove edu & training because it has vif > 2 
-mean(vif(big_model))
+vif(big_model) 
 
 #model_test = lm(training ~ edu,data = data)
 #summary(model_test)
-
+par(mfrow = c(1,5))
 #### ASSUMPTIONS
 ## Check Linearity
 par(mfrow = c(1,1))
 plot(fitted(model_aic_back), resid(model_aic_back), col = "grey", pch = 20,
-     xlab = "Fitted", ylab = "Residuals", main = "Check linearity")
-abline(h = 0, col = "darkorange", lwd = 2) # violate
-library(lmtest)
-## Check Independence of error
-dwtest(model_aic_back) #satisfy
-
-## Check Normality
-ks.test(data, 'pnorm')
-
-par(mfrow = c(1,1))
-qqnorm(resid(model_aic_back), main = "Normal Q-Q Plot, fit_1", col = "darkgrey")
-qqline(resid(model_aic_back), col = "dodgerblue", lwd =2) #satisfy
+     xlab = "Fitted", ylab = "Residuals", main = "Model_AIC")
+abline(h = 0, col = "darkorange", lwd = 2)
 
 ## Check Equal Variance (Homoskedasticity)
 # H0: Homoscedasticity
@@ -129,131 +106,142 @@ qqline(resid(model_aic_back), col = "dodgerblue", lwd =2) #satisfy
 library(lmtest)
 bptest(model_aic_back) # violate
 
-###### LOG DEPENDENT
+## Check Normality
+hist(resid(model_aic_back))
+
+par(mfrow = c(1,1))
+qqnorm(resid(model_aic_back), main = "Model_AIC", col = "darkgrey")
+qqline(resid(model_aic_back), col = "dodgerblue", lwd =2) #violate
+
+
+library(lmtest)
+## Check Independence of error
+dwtest(model_aic_back) 
+
+##### TRANSFORMATION
+## log dependent
 model_aic_back_log = lm(log(wage) ~ region+exper+urban+married+gender+training+edu+SOE, data = data)
 summary(model_aic_back_log)
-bptest(model_aic_back_log) #violate
-plot(fitted(model_aic_back_log), resid(model_aic_back_log), col = "grey", pch = 20,
-     xlab = "Fitted", ylab = "Residuals", main = "Check linearity")
-abline(h = 0, col = "darkorange", lwd = 2)
 
-shapiro.test(resid(model_aic_back_log)) #p-value small: violated
-par(mfrow = c(1,2))
-qqnorm(resid(model_aic_back), main = "Normal Q-Q Plot, fit_1", col = "darkgrey")
-qqline(resid(model_aic_back), col = "dodgerblue", lwd =2)
-qqnorm(resid(model_aic_back_log), main = "Normal Q-Q Plot, fit_1", col = "darkgrey")
-qqline(resid(model_aic_back_log), col = "dodgerblue", lwd =2)
+## polynomial
+model_aic_back_poly = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+training+gender+SOE,data=data)
+summary(model_aic_back_poly)
 
-## Check Independence of error
-dwtest(model_aic_back_log)
+## log independent
+model_aic_back_log2 = lm(log(wage) ~ region + gender + urban +SOE + married  +log(exper+1) +training + log(edu+1) , data = data)
+summary(model_aic_back_log2)
 
-hist(data$wage)
-min(data$wage)
-
-###### BOX-COX
+## boxcox
 library(MASS)
 boxcox(model_aic_back, plotit = TRUE)
 boxcox(model_aic_back, plotit = TRUE, lambda = seq(0.4, 0.6, by = 0.05)) #0.5
 model_aic_back_cox = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE, data = data)
-
 summary(model_aic_back_cox)
 
-bptest(model_aic_back)
-bptest(model_aic_back_cox) #violate
+########## COMPARATION
 
-par(mfrow = c(1,2))
+par(mfrow = c(2,3))
+
+## Constant variance
 plot(fitted(model_aic_back), resid(model_aic_back), col = "grey", pch = 20,
-     xlab = "Fitted", ylab = "Residuals", main = "Check linearity")
+     xlab = "Fitted", ylab = "Residuals", main = "Model_AIC")
 abline(h = 0, col = "darkorange", lwd = 2)
+bptest(model_aic_back)
+
+plot(fitted(model_aic_back_log), resid(model_aic_back_log), col = "grey", pch = 20,
+     xlab = "Fitted", ylab = "Residuals", main = "Model_Log Dependent")
+abline(h = 0, col = "darkorange", lwd = 2)
+bptest(model_aic_back_log)
+
 plot(fitted(model_aic_back_cox), resid(model_aic_back_cox), col = "grey", pch = 20,
-     xlab = "Fitted", ylab = "Residuals", main = "Check linearity")
+     xlab = "Fitted", ylab = "Residuals", main = "Model_Boxcox")
 abline(h = 0, col = "darkorange", lwd = 2)
+bptest(model_aic_back_cox)
 
-shapiro.test(resid(model_aic_back_cox)) #p-value small: violated
-par(mfrow = c(1,2))
-qqnorm(resid(model_aic_back), main = "Normal Q-Q Plot, fit_1", col = "darkgrey")
-qqline(resid(model_aic_back), col = "dodgerblue", lwd =2)
-qqnorm(resid(model_aic_back_cox), main = "Normal Q-Q Plot, fit_1", col = "darkgrey")
-qqline(resid(model_aic_back_cox), col = "dodgerblue", lwd =2)
-
-## Check Independence of error
-dwtest(model_aic_back_cox)
-
-####### LOG INDEPENDENCE
-
-model_aic_back_log2 = lm(log(wage) ~ region + gender + urban +SOE + married  +log(exper+1) +training + log(edu+1) , data = data)
-
-summary(model_aic_back_log2)
+plot(fitted(model_aic_back_log2), resid(model_aic_back_log2), col = "grey", pch = 20,
+     xlab = "Fitted", ylab = "Residuals", main = "Model_Independence Log")
+abline(h = 0, col = "darkorange", lwd = 2)
 bptest(model_aic_back_log2)
 
-par(mfrow = c(1,2))
-plot(fitted(model_aic_back), resid(model_aic_back), col = "grey", pch = 20,
-     xlab = "Fitted", ylab = "Residuals", main = "Check linearity")
+plot(fitted(model_aic_back_poly), resid(model_aic_back_poly), col = "grey", pch = 20,
+     xlab = "Fitted", ylab = "Residuals", main = "Model_AIC_Poly")
 abline(h = 0, col = "darkorange", lwd = 2)
-plot(fitted(model_aic_back_log2), resid(model_aic_back_log2), col = "grey", pch = 20,
-     xlab = "Fitted", ylab = "Residuals", main = "Check linearity")
-abline(h = 0, col = "darkorange", lwd = 2)
+bptest(model_aic_back_poly)
 
-shapiro.test(resid(model_aic_back_log2)) #p-value small: violated
-
-par(mfrow = c(1,2))
-qqnorm(resid(model_aic_back), main = "Normal Q-Q Plot, fit_1", col = "darkgrey")
+## Normality
+qqnorm(resid(model_aic_back), main = "Model_AIC", col = "darkgrey")
 qqline(resid(model_aic_back), col = "dodgerblue", lwd =2)
-qqnorm(resid(model_aic_back_log2), main = "Normal Q-Q Plot, fit_1", col = "darkgrey")
+
+qqnorm(resid(model_aic_back_log), main = "Model_Log Dependent", col = "darkgrey")
+qqline(resid(model_aic_back_log), col = "dodgerblue", lwd =2)
+
+qqnorm(resid(model_aic_back_cox), main = "Model_Boxcox", col = "darkgrey")
+qqline(resid(model_aic_back_cox), col = "dodgerblue", lwd =2)
+
+qqnorm(resid(model_aic_back_log2), main = "Model_Independence Log", col = "darkgrey")
 qqline(resid(model_aic_back_log2), col = "dodgerblue", lwd =2)
-## Check Independence of error
+
+qqnorm(resid(model_aic_back_poly), main = "Model_AIC_Poly", col = "darkgrey")
+qqline(resid(model_aic_back_poly), col = "dodgerblue", lwd =2)
+
+## Independence of error
+dwtest(model_aic_back)
+dwtest(model_aic_back_log)
+dwtest(model_aic_back_cox)
 dwtest(model_aic_back_log2)
+dwtest(model_aic_back_poly)
 
+#######################
 
-#### Model Selection
-model_aic_back_cox = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE, data = data)
+#### Model Selection (POLY)
+model_aic_back_poly = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+training+gender+SOE,data=data)
 
-model_aic_back_cox_intEduGen = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+edu:gender, data=data)
-summary(model_aic_back_cox_intEduGen)
-anova(model_aic_back_cox, model_aic_back_cox_intEduGen) #1*
+model_aic_back_poly_intEduGen = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+training+gender+SOE+edu:gender, data=data)
+summary(model_aic_back_poly_intEduGen) #0.2629
+anova(model_aic_back_poly, model_aic_back_poly_intEduGen) #0.0002238 ***
 
-model_aic_back_cox_intEduMarried = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+edu:married, data=data)
-summary(model_aic_back_cox_intEduMarried)
-anova(model_aic_back_cox, model_aic_back_cox_intEduMarried) #0.0002317 ***
+model_aic_back_poly_intEduMarried = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+edu:married, data=data)
+summary(model_aic_back_poly_intEduMarried) #0.2617
+anova(model_aic_back_poly, model_aic_back_poly_intEduMarried) #0.7678
 
-model_aic_back_cox_intEduSOE = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+edu:SOE, data=data)
-summary(model_aic_back_cox_intEduSOE) #0.2373 
-anova(model_aic_back_cox, model_aic_back_cox_intEduSOE) #2.2e-16 
+model_aic_back_poly_intEduSOE = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+edu:SOE, data=data)
+summary(model_aic_back_poly_intEduSOE) #0.2635 
+anova(model_aic_back_poly, model_aic_back_poly_intEduSOE) # 1.453e-12 ***
 
-model_aic_back_cox_intEduTrain = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+edu:training, data=data)
-summary(model_aic_back_intEduTrain) #0.2377 
-anova(model_aic_back_cox, model_aic_back_cox_intEduTrain) #2.2e-16 *** 
+model_aic_back_poly_intEduTrain = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+edu:training, data=data)
+summary(model_aic_back_poly_intEduTrain) # 0.2633
+anova(model_aic_back_poly, model_aic_back_poly_intEduTrain) #4.777e-10 ***
 
-model_aic_back_cox_intEduUrban = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+edu:urban, data=data)
-summary(model_aic_back_cox_intEduUrban) #0.2385 0.2375
-anova(model_aic_back_cox, model_aic_back_cox_intEduUrban) #2.2e-16 ***
+model_aic_back_poly_intEduUrban = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+edu:urban, data=data)
+summary(model_aic_back_poly_intEduUrban) #0.2633
+anova(model_aic_back_poly, model_aic_back_poly_intEduUrban) #3.18e-09 ***
 
-model_aic_back_cox_intEduRegion = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+edu:region, data=data)
-summary(model_aic_back_cox_intEduRegion) #0.2384
-anova(model_aic_back_cox, model_aic_back_cox_intEduRegion) #2.2e-16 ***
+model_aic_back_poly_intEduRegion = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+edu:region, data=data)
+summary(model_aic_back_poly_intEduRegion) #0.2636
+anova(model_aic_back_poly, model_aic_back_poly_intEduRegion) #5.169e-11 ***
 
-model_aic_back_cox_intExpergender = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+exper:gender, data=data)
-summary(model_aic_back_cox_intExpergender) #0.2361
-anova(model_aic_back_cox, model_aic_back_cox_intExpergender) #6.116e-05 ***
+model_aic_back_poly_intExpergender = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+exper:gender, data=data)
+summary(model_aic_back_poly_intExpergender) #0.2619 
+anova(model_aic_back_poly, model_aic_back_poly_intExpergender) #0.00748 **
 
-model_aic_back_cox_intExpermarried = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+exper:married, data=data)
-summary(model_aic_back_cox_intExpermarried) #0.2385 
-anova(model_aic_back_cox, model_aic_back_cox_intExpermarried) #2.2e-16 ***
+model_aic_back_poly_intExpermarried = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+exper:married, data=data)
+summary(model_aic_back_poly_intExpermarried) #0.2628
+anova(model_aic_back_poly, model_aic_back_poly_intExpermarried) #0.3362
 
-model_aic_back_cox_intExpSoe = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+exper:SOE, data=data)
-summary(model_aic_back_cox_intExpSoe) #0.2361 0.2358
-anova(model_aic_back_cox, model_aic_back_cox_intExpSoe)#0.009801 **   
+model_aic_back_poly_intExpSoe = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+exper:SOE, data=data)
+summary(model_aic_back_poly_intExpSoe) #0.2617
+anova(model_aic_back_poly, model_aic_back_poly_intExpSoe)#0.2046
 
-model_aic_back_cox_intExpTrain = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+exper:training, data=data)
-summary(model_aic_back_cox_intExpTrain) #0.2375  0.237
-anova(model_aic_back_cox, model_aic_back_cox_intExpTrain) #2.2e-16 ***  
+model_aic_back_poly_intExpTrain = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+exper:training, data=data)
+summary(model_aic_back_poly_intExpTrain) #0.2639
+anova(model_aic_back_poly, model_aic_back_poly_intExpTrain) #2.2e-16 ***
 
-model_aic_back_cox_intExpUrban = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+exper:urban, data=data)
-summary(model_aic_back_cox_intExpUrban) #0.2359
-anova(model_aic_back_cox, model_aic_back_cox_intExpUrban) #0.3878 
+model_aic_back_poly_intExpUrban = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+exper:urban, data=data)
+summary(model_aic_back_poly_intExpUrban) #0.2628
+anova(model_aic_back_poly, model_aic_back_poly_intExpUrban) #0.0112 *
 
-model_aic_back_cox_intExpRegion = lm(((wage^0.5)-1)/0.5 ~ region+exper+urban+married+gender+training+edu+SOE+exper:region, data=data)
-summary(model_aic_back_cox_intExpRegion) #0.2381
-anova(model_aic_back_cox, model_aic_back_cox_intExpRegion) #2.2e-16 ***
+model_aic_back_poly_intExpRegion = lm(wage ~ region+edu+I(edu^2)+exper+I(exper^2)+urban+married+gender+training+edu+SOE+exper:region, data=data)
+summary(model_aic_back_poly_intExpRegion) #0.2643
+anova(model_aic_back_poly, model_aic_back_poly_intExpRegion) #2.2e-16 ***
 
-## best model: model_aic_back_cox_intEduUrban, model_aic_back_cox_intExpermarried
+########## model_aic_back_poly_intExpRegion
